@@ -1,0 +1,28 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+data/snapshots/
+
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Pytest cache
+.pytest_cache/
+
+# Generated inventory snapshots
+data/snapshots/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db
