@@ -1,0 +1,10 @@
+requests
+beautifulsoup4
+pydantic
+pytest
+
+requests
+beautifulsoup4
+pydantic
+pytest
+playwright
