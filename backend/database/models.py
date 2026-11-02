@@ -86,6 +86,66 @@ class InventorySnapshot(Base):
 
     source_file: Mapped[str | None] = mapped_column(Text)
 
+    
+    # Identifies one independent scraper execution.
+    # Nullable so existing snapshots remain valid.
+    crawl_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+
+    # SHA-256 fingerprint of the crawl contents.
+    payload_hash: Mapped[str | None] = mapped_column(
+        String(64)
+    )
+
+    # success / partial
+    status: Mapped[str | None] = mapped_column(
+        String(20)
+    )
+
+    pages_expected: Mapped[int] = mapped_column(
+        Integer, nullable=False,
+        default=0, server_default="0",
+    )
+
+    pages_seen: Mapped[int] = mapped_column(
+        Integer, nullable=False,
+        default=0, server_default="0",
+    )
+
+    added: Mapped[int] = mapped_column(
+        Integer, nullable=False,
+        default=0, server_default="0",
+    )
+
+    updated: Mapped[int] = mapped_column(
+        Integer, nullable=False,
+        default=0, server_default="0",
+    )
+
+    unchanged: Mapped[int] = mapped_column(
+        Integer, nullable=False,
+        default=0, server_default="0",
+    )
+
+    suspected_missing: Mapped[int] = mapped_column(
+        Integer, nullable=False,
+        default=0, server_default="0",
+    )
+
+    inactive: Mapped[int] = mapped_column(
+        Integer, nullable=False,
+        default=0, server_default="0",
+    )
+
+    error_detail: Mapped[str | None] = mapped_column(
+        Text
+    )
+
+
 
 class InventoryChange(Base):
     __tablename__ = "inventory_changes"

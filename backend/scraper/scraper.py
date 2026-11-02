@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+import hashlib
 
 import requests
 
@@ -36,20 +37,92 @@ def scrape_inventory_page(url):
     return parse_inventory(html)
 
 
-def save_snapshot(vehicles):
-    """Save parsed vehicle data to a JSON snapshot."""
+
+def save_snapshot(
+    vehicles,
+    *,
+    expected_count=None,
+    validated=False,
+    source_url=None,
+):
+    """
+    Save vehicle data as a JSON file.
+
+    A completeness metadata file is created only when
+    the caller has completed inventory validation.
+    """
+
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+
+    if validated:
+        if (
+            expected_count is None
+            or expected_count <= 0
+            or len(vehicles) != expected_count
+        ):
+            raise ValueError(
+                "Cannot certify an incomplete inventory"
+            )
+
+        if not source_url:
+            raise ValueError(
+                "A certified snapshot needs a source URL"
+            )
 
     timestamp = datetime.now(timezone.utc).strftime(
         "%Y%m%d_%H%M%S_%f"
     )
 
-    output_path = SNAPSHOT_DIR / f"inventory_{timestamp}.json"
+    output_path = (
+        SNAPSHOT_DIR / f"inventory_{timestamp}.json"
+    )
 
-    with output_path.open("w", encoding="utf-8") as file:
-        json.dump(vehicles, file, indent=2, ensure_ascii=False)
+    json_text = json.dumps(
+        vehicles,
+        indent=2,
+        ensure_ascii=False,
+    )
+
+    content = json_text.encode("utf-8")
+
+    # Save the vehicle records.
+    output_path.write_bytes(content)
+
+    # Only validated crawls receive a completion receipt.
+    if validated:
+        receipt = {
+            "schema_version": 1,
+            "crawl_id": output_path.stem,
+            "source_url": source_url,
+            "expected_count": expected_count,
+            "vehicle_count": len(vehicles),
+            "pages_expected": 1,
+            "pages_seen": 1,
+            "is_complete": True,
+            "validation_passed": True,
+            "snapshot_sha256": hashlib.sha256(
+                content
+            ).hexdigest(),
+            "created_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+        }
+
+        receipt_path = output_path.with_suffix(
+            ".meta.json"
+        )
+
+        receipt_path.write_text(
+            json.dumps(
+                receipt,
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
 
     return output_path
+
 
 
 def scrape_inventory_pages(urls):

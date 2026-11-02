@@ -111,11 +111,22 @@ def scrape_full_inventory():
                 expected_count=expected_count,
             )
 
-            snapshot_path = save_snapshot(validated_vehicles)
+            
+            snapshot_path = save_snapshot(
+                validated_vehicles,
+                expected_count=expected_count,
+                validated=True,
+                source_url=INVENTORY_URL,
+            )
 
             print(f"Snapshot saved: {snapshot_path}")
+            print(
+                "Completeness metadata saved: "
+                f"{snapshot_path.with_suffix('.meta.json')}"
+            )
 
-            return vehicles
+            return validated_vehicles
+
 
         finally:
             browser.close()
