@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from backend.api.vehicles import router as vehicles_router
+from backend.api.inventory import router as inventory_router
 
 
 app = FastAPI(
@@ -14,6 +15,7 @@ app = FastAPI(
 
 
 app.include_router(vehicles_router)
+app.include_router(inventory_router)
 
 
 @app.get("/health")
