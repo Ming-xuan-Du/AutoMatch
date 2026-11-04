@@ -497,3 +497,56 @@ button:disabled {
     padding: 20px;
   }
 }
+
+
+.ai-extraction-panel {
+  margin-bottom: 28px;
+  padding: 20px;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 14px;
+}
+
+.ai-extraction-panel textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ai-extraction-panel textarea:focus {
+  outline: 2px solid #4b8ef7;
+  outline-offset: 2px;
+}
+
+.ai-help-text,
+.ai-field-feedback {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.ai-field-feedback {
+  margin-top: 6px;
+}
+
+.ai-review-notes {
+  margin-top: 12px;
+  text-align: left;
+}
+
+.ai-review-notes ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.ai-review-notes li {
+  margin-bottom: 6px;
+}
