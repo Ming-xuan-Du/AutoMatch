@@ -1,0 +1,12 @@
+# Installed dependencies
+node_modules/
+
+# Vite production build
+dist/
+
+# Local environment
+.env.local
+.env.*.local
+
+# Debug logs
+npm-debug.log*
