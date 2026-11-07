@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
+    Index,
     Integer,
     JSON,
     String,
@@ -86,7 +89,7 @@ class InventorySnapshot(Base):
 
     source_file: Mapped[str | None] = mapped_column(Text)
 
-    
+
     # Identifies one independent scraper execution.
     # Nullable so existing snapshots remain valid.
     crawl_id: Mapped[str | None] = mapped_column(
@@ -174,3 +177,169 @@ class InventoryChange(Base):
     )
 
     snapshot: Mapped["InventorySnapshot"] = relationship()
+class AnomalyFlag(Base):
+    __tablename__ = "anomaly_flags"
+
+    __table_args__ = (
+        CheckConstraint(
+            "detector IN ('rule', 'model')",
+            name="ck_anomaly_flags_detector",
+        ),
+        CheckConstraint(
+            "review_status IN "
+            "('pending', 'valid_issue', 'false_alarm')",
+            name="ck_anomaly_flags_review_status",
+        ),
+        Index(
+            "ix_anomaly_flags_review_status_detector",
+            "review_status",
+            "detector",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    vehicle_id: Mapped[int] = mapped_column(
+        ForeignKey("vehicles.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    inventory_change_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "inventory_changes.id",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    detector: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
+    issue_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    explanation: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    evidence: Mapped[dict] = mapped_column(
+        JSON,
+        nullable=False,
+    )
+
+    fingerprint: Mapped[str] = mapped_column(
+        String(64),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    score: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    model_version: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    first_detected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        nullable=False,
+    )
+
+    last_detected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        nullable=False,
+    )
+
+    review_status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+
+    reviewer_note: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    vehicle: Mapped["Vehicle"] = relationship()
+
+    inventory_change: Mapped[
+        "InventoryChange | None"
+    ] = relationship()
+
+    review_events: Mapped[
+        list["AnomalyReviewEvent"]
+    ] = relationship(
+        back_populates="anomaly",
+        order_by="AnomalyReviewEvent.id",
+    )
+
+
+class AnomalyReviewEvent(Base):
+    __tablename__ = "anomaly_review_events"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    anomaly_flag_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "anomaly_flags.id",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    previous_status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
+    new_status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
+    previous_note: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    new_note: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        nullable=False,
+    )
+
+    anomaly: Mapped["AnomalyFlag"] = relationship(
+        back_populates="review_events",
+    )

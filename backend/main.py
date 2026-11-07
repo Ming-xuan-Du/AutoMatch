@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from backend.api.vehicles import router as vehicles_router
 from backend.api.inventory import router as inventory_router
 from backend.api.requirements import router as requirements_router
+from backend.api.anomalies import router as anomalies_router
 
 
 app = FastAPI(
@@ -18,6 +19,7 @@ app = FastAPI(
 app.include_router(vehicles_router)
 app.include_router(inventory_router)
 app.include_router(requirements_router)
+app.include_router(anomalies_router)
 
 
 @app.get("/health")
