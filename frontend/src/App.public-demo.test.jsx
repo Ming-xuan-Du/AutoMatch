@@ -36,6 +36,12 @@ describe("AutoMatch public demo UI security", () => {
 
     render(<App />);
 
+    expect(
+      screen.queryByText(
+        "Portfolio Demo — Synthetic Inventory"
+      )
+    ).not.toBeInTheDocument();
+
     fireEvent.click(
       screen.getByRole("button", {
         name: "Open anomaly review",
@@ -52,6 +58,18 @@ describe("AutoMatch public demo UI security", () => {
     vi.stubEnv("VITE_AUTOMATCH_PUBLIC_DEMO", "1");
 
     render(<App />);
+
+    expect(
+      screen.getByText(
+        "Portfolio Demo — Synthetic Inventory"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: "AI extraction unavailable in public demo",
+      })
+    ).toBeDisabled();
 
     expect(
       screen.queryByRole("button", {

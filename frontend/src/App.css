@@ -800,3 +800,33 @@ button:disabled {
     width: 100%;
   }
 }
+
+/* Public portfolio demonstration notice */
+
+.demo-notice {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  color: #1e3a8a;
+}
+
+.demo-notice strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.demo-notice p {
+  color: #475569;
+  line-height: 1.6;
+  margin: 8px 0 0;
+}
+
+@media (max-width: 600px) {
+  .demo-notice {
+    padding: 16px;
+  }
+}

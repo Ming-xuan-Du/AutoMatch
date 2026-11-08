@@ -79,9 +79,11 @@ export default function App() {
   const [editedFields, setEditedFields] = useState({});
   const [showAnomalyReview, setShowAnomalyReview] =
     useState(false);
+  const publicDemo =
+    import.meta.env.VITE_AUTOMATCH_PUBLIC_DEMO === "1";
+
   const reviewUiAvailable =
-  !import.meta.env.PROD &&
-  import.meta.env.VITE_AUTOMATCH_PUBLIC_DEMO !== "1";
+    !import.meta.env.PROD && !publicDemo;
 
 
   function handleChange(event) {
@@ -199,6 +201,29 @@ export default function App() {
       </header>
 
       <main>
+        {publicDemo && (
+          <aside
+            className="demo-notice"
+            aria-label="Synthetic inventory notice"
+          >
+            <strong>
+              Portfolio Demo — Synthetic Inventory
+            </strong>
+
+            <p>
+              AutoMatch currently uses 50 fictional vehicles
+              to demonstrate inventory search and partial
+              matching. These vehicles are not real listings
+              and are not available for purchase.
+            </p>
+
+            <p>
+              AI requirement extraction is currently disabled
+              in the public demo.
+            </p>
+          </aside>
+        )}
+
         <InventoryStatus />
 
 
@@ -265,7 +290,7 @@ export default function App() {
                 }
                 rows={4}
                 maxLength={1200}
-                disabled={loading || extracting}
+                disabled={publicDemo || loading || extracting}
               />
             </div>
 
@@ -283,14 +308,17 @@ export default function App() {
                 className="search-button"
                 onClick={handleExtract}
                 disabled={
+                  publicDemo ||
                   loading ||
                   extracting ||
                   customerText.trim().length < 5
                 }
               >
-                {extracting
-                  ? "Extracting requirements..."
-                  : "Extract requirements with AI"}
+                {publicDemo
+                  ? "AI extraction unavailable in public demo"
+                  : extracting
+                    ? "Extracting requirements..."
+                    : "Extract requirements with AI"}
               </button>
             </div>
 

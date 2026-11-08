@@ -130,7 +130,22 @@ export default function VehicleCard({ match }) {
   const [imageFailed, setImageFailed] = useState(false);
 
   const imageUrl = safeHttpUrl(vehicle.image_url);
-  const listingUrl = safeHttpUrl(vehicle.listing_url);
+
+  const isSyntheticVehicle =
+    (
+      typeof vehicle.source_listing_id === "string" &&
+      vehicle.source_listing_id.startsWith("DEMO-")
+    ) ||
+    (
+      typeof vehicle.listing_url === "string" &&
+      /^https?:\/\/example\.invalid(?:\/|$)/i.test(
+        vehicle.listing_url
+      )
+    );
+
+  const listingUrl = isSyntheticVehicle
+    ? null
+    : safeHttpUrl(vehicle.listing_url);
 
   const title =
     vehicle.title ||
@@ -220,7 +235,11 @@ export default function VehicleCard({ match }) {
           )}
         </div>
 
-        {listingUrl ? (
+        {isSyntheticVehicle ? (
+          <p className="listing-unavailable">
+            Synthetic demo vehicle — not available for purchase.
+          </p>
+        ) : listingUrl ? (
           <a
             className="listing-link"
             href={listingUrl}
