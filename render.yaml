@@ -1,0 +1,47 @@
+
+# AutoMatch cloud deployment configuration.
+# No database credentials or API keys are stored here.
+
+services:
+  - type: web
+    name: automatch-demo
+    runtime: python
+    plan: 0.5c-512mb
+    region: ohio
+
+    # Deploy manually until public access is secured.
+    autoDeployTrigger: off
+
+    # Build the Python backend and React frontend.
+    buildCommand: >-
+      python -m pip install
+      -r requirements.txt
+      -r ml/requirements-ml.txt
+      &&
+      python -m pip check
+      &&
+      cd frontend
+      &&
+      npm ci
+      &&
+      npm run build
+
+    # Run migrations before deploying a new version.
+    # Supported on paid Render web services.
+    preDeployCommand: python -m alembic upgrade head
+
+    # Serve React and APIs through FastAPI.
+    startCommand: >-
+      python -m uvicorn backend.main:app
+      --host 0.0.0.0
+      --port $PORT
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: AUTOMATCH_SERVE_FRONTEND
+        value: "1"
+
+      # Enter the actual database URL privately in Render.
+      - key: DATABASE_URL
+        sync: false
