@@ -1,4 +1,9 @@
+
+import os
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from backend.api.vehicles import router as vehicles_router
 from backend.api.inventory import router as inventory_router
@@ -28,3 +33,45 @@ def health_check():
         "status": "ok",
         "service": "AutoMatch API",
     }
+
+
+def mount_frontend(
+    application: FastAPI,
+    dist_dir: Path,
+) -> None:
+    """Serve the compiled React frontend.
+
+    API routes must be registered before this root mount.
+    """
+
+    index_file = dist_dir / "index.html"
+
+    if not index_file.is_file():
+        raise RuntimeError(
+            f"Frontend production build not found: "
+            f"{index_file}. "
+            "Run 'npm ci' and 'npm run build' "
+            "inside the frontend directory first."
+        )
+
+    application.mount(
+        "/",
+        StaticFiles(
+            directory=str(dist_dir),
+            html=True,
+        ),
+        name="frontend",
+    )
+
+
+# Opt-in: local API development and backend CI remain unchanged.
+if os.getenv(
+    "AUTOMATCH_SERVE_FRONTEND", "0"
+).strip() == "1":
+    frontend_dist = (
+        Path(__file__).resolve().parents[1]
+        / "frontend"
+        / "dist"
+    )
+
+    mount_frontend(app, frontend_dist)
