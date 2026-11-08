@@ -36,12 +36,19 @@ services:
       --host 0.0.0.0
       --port $PORT
 
-    healthCheckPath: /health
-
+    healthCheckPath: /health  
+    
     envVars:
       - key: AUTOMATCH_SERVE_FRONTEND
         value: "1"
 
-      # Enter the actual database URL privately in Render.
+      # Cloud AI provider
+      - key: AI_PROVIDER
+        value: "openai"
+
+      - key: OPENAI_MODEL
+        value: "gpt-4o-mini"
+
+      # Set the actual database URL privately in Render.
       - key: DATABASE_URL
         sync: false
