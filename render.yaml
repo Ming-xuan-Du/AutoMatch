@@ -46,6 +46,11 @@ services:
       - key: AUTOMATCH_PUBLIC_DEMO
         value: "1"
 
+      # Frontend build-time public demo flag.
+      # Non-sensitive: included in the compiled JavaScript.
+      - key: VITE_AUTOMATCH_PUBLIC_DEMO
+        value: "1"
+
       # Cloud AI provider
       - key: AI_PROVIDER
         value: "openai"

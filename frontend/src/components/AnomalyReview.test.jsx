@@ -99,9 +99,41 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllEnvs();
 });
 
 describe("AutoMatch anomaly review dashboard", () => {
+
+  it("hides review UI in a public demo", () => {
+    vi.stubEnv("VITE_AUTOMATCH_PUBLIC_DEMO", "1");
+
+    render(<AnomalyReview />);
+
+    expect(
+      screen.queryByLabelText("Review API key")
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByLabelText("Anomaly review dashboard")
+    ).not.toBeInTheDocument();
+
+    expect(fetchAnomalies).not.toHaveBeenCalled();
+  });
+
+  it("hides review UI in production by default", () => {
+    vi.stubEnv("PROD", true);
+    vi.stubEnv("VITE_AUTOMATCH_PUBLIC_DEMO", "0");
+
+    render(<AnomalyReview />);
+
+    expect(
+      screen.queryByLabelText("Review API key")
+    ).not.toBeInTheDocument();
+
+    expect(fetchAnomalies).not.toHaveBeenCalled();
+  });
+
+
   it("does not request data before connection", () => {
     render(<AnomalyReview />);
 

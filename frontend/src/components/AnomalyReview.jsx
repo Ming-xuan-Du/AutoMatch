@@ -253,6 +253,15 @@ export default function AnomalyReview() {
     }
   }
 
+  // Keep development-only review controls out of public builds.
+  // This is a UI restriction, not an authentication mechanism.
+  if (
+    import.meta.env.PROD ||
+    import.meta.env.VITE_AUTOMATCH_PUBLIC_DEMO === "1"
+  ) {
+    return null;
+  }
+
   return (
     <section
       className="anomaly-panel"

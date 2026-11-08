@@ -79,6 +79,9 @@ export default function App() {
   const [editedFields, setEditedFields] = useState({});
   const [showAnomalyReview, setShowAnomalyReview] =
     useState(false);
+  const reviewUiAvailable =
+  !import.meta.env.PROD &&
+  import.meta.env.VITE_AUTOMATCH_PUBLIC_DEMO !== "1";
 
 
   function handleChange(event) {
@@ -198,27 +201,35 @@ export default function App() {
       <main>
         <InventoryStatus />
 
-        <div className="anomaly-toggle-row">
-          <button
-            type="button"
-            className="clear-button"
-            aria-expanded={showAnomalyReview}
-            aria-controls="anomaly-review-region"
-            onClick={() =>
-              setShowAnomalyReview((previous) => !previous)
-            }
-          >
-            {showAnomalyReview
-              ? "Hide anomaly review"
-              : "Open anomaly review"}
-          </button>
-        </div>
 
-        {showAnomalyReview && (
-          <div id="anomaly-review-region">
-            <AnomalyReview />
-          </div>
+        {reviewUiAvailable && (
+          <>
+            <div className="anomaly-toggle-row">
+              <button
+                type="button"
+                className="clear-button"
+                aria-expanded={showAnomalyReview}
+                aria-controls="anomaly-review-region"
+                onClick={() =>
+                  setShowAnomalyReview(
+                    (previous) => !previous
+                  )
+                }
+              >
+                {showAnomalyReview
+                  ? "Hide anomaly review"
+                  : "Open anomaly review"}
+              </button>
+            </div>
+
+            {showAnomalyReview && (
+              <div id="anomaly-review-region">
+                <AnomalyReview />
+              </div>
+            )}
+          </>
         )}
+
 
         <section className="search-panel">
           <div className="section-heading">
