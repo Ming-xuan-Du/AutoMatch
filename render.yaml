@@ -61,3 +61,8 @@ services:
       # Set the actual database URL privately in Render.
       - key: DATABASE_URL
         sync: false
+
+      # Public AI remains disabled until security
+      # and trusted proxy configuration are verified.
+      - key: AUTOMATCH_PUBLIC_AI_ENABLED
+        value: "0"
