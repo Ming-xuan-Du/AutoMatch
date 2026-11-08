@@ -1,4 +1,4 @@
-
+import os
 from fastapi import APIRouter, HTTPException
 
 from backend.ai.extractor import (
@@ -33,6 +33,20 @@ async def extract_customer_requirements(
     Does not query the inventory database,
     recommend vehicles, or persist conversations.
     """
+
+        # Public portfolio AI remains disabled until
+    # shared usage limits and concurrency controls
+    # have been implemented and verified.
+    if os.getenv(
+        "AUTOMATCH_PUBLIC_DEMO", "0"
+    ).strip() == "1":
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "AI extraction is temporarily unavailable "
+                "in the public demo. Use manual search."
+            ),
+        )
 
     try:
         return await extract_requirements(

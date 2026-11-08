@@ -180,3 +180,56 @@ def test_pii_rejected_before_provider_call(
     )
 
     assert response.status_code == 400
+
+
+@pytest.mark.parametrize(
+    "provider",
+    ["openai", "ollama"],
+)
+def test_public_demo_ai_is_disabled(
+    client,
+    monkeypatch,
+    provider,
+):
+    """Public demo must not call any AI provider."""
+
+    monkeypatch.setenv(
+        "AUTOMATCH_PUBLIC_DEMO",
+        "1",
+    )
+    monkeypatch.setenv(
+        "AI_PROVIDER",
+        provider,
+    )
+    monkeypatch.setenv(
+        "OPENAI_API_KEY",
+        "fake-test-key",
+    )
+
+    calls = []
+
+    async def fake_extract(customer_text):
+        calls.append(customer_text)
+        raise AssertionError(
+            "AI provider must not be called."
+        )
+
+    monkeypatch.setattr(
+        requirements_api,
+        "extract_requirements",
+        fake_extract,
+    )
+
+    response = client.post(
+        "/api/requirements/extract",
+        json={
+            "customer_text": "I need a Toyota SUV."
+        },
+    )
+
+    assert response.status_code == 503
+    assert "manual search" in (
+        response.json()["detail"]
+    ).lower()
+
+    assert calls == []
