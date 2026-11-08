@@ -340,7 +340,10 @@ async def extract_with_ollama(
 
     try:
         async with OllamaAsyncClient(
-            host="http://127.0.0.1:11434",
+            host=os.getenv(
+                "OLLAMA_HOST",
+                "http://127.0.0.1:11434",
+            ),
             timeout=120.0,
         ) as client:
             response = await client.chat(
