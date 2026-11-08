@@ -1,4 +1,6 @@
+import asyncio
 
+from starlette.requests import Request
 import pytest
 
 from fastapi import FastAPI
@@ -231,3 +233,131 @@ def test_provider_failure_marks_reservation_failed(
 
     assert response.status_code == 503
     assert events == [(321, False)]
+
+
+def test_public_ai_timeout_marks_reservation_failed(
+    client,
+    monkeypatch,
+):
+    """Timed-out public requests consume their reservation."""
+
+    events = []
+
+    monkeypatch.setattr(
+        api,
+        "PUBLIC_AI_TIMEOUT_SECONDS",
+        0.01,
+    )
+
+    def fake_reserve(*args):
+        events.append("reserve")
+        return 456
+
+    def fake_finish(factory, reservation_id, *, succeeded):
+        events.append(
+            ("finish", reservation_id, succeeded)
+        )
+        return True
+
+    async def slow_extract(customer_text):
+        events.append("extract")
+        await asyncio.sleep(1)
+
+    monkeypatch.setattr(
+        api, "reserve_ai_extraction", fake_reserve
+    )
+    monkeypatch.setattr(
+        api, "finish_ai_extraction", fake_finish
+    )
+    monkeypatch.setattr(
+        api, "extract_requirements", slow_extract
+    )
+
+    response = post_extract(client)
+
+    assert response.status_code == 504
+    assert events == [
+        "reserve",
+        "extract",
+        ("finish", 456, False),
+    ]
+
+
+def test_public_ai_cancellation_marks_reservation_failed(
+    client,
+    monkeypatch,
+):
+    """Cancelling an API task finalizes its reservation."""
+
+    events = []
+
+    def fake_reserve(*args):
+        return 789
+
+    def fake_finish(factory, reservation_id, *, succeeded):
+        events.append(
+            (reservation_id, succeeded)
+        )
+        return True
+
+    monkeypatch.setattr(
+        api, "reserve_ai_extraction", fake_reserve
+    )
+    monkeypatch.setattr(
+        api, "finish_ai_extraction", fake_finish
+    )
+
+    async def scenario():
+        started = asyncio.Event()
+
+        async def slow_extract(customer_text):
+            started.set()
+            await asyncio.sleep(60)
+
+        monkeypatch.setattr(
+            api, "extract_requirements", slow_extract
+        )
+
+        request = Request({
+            "type": "http",
+            "method": "POST",
+            "path": "/api/requirements/extract",
+            "headers": [],
+            "client": ("192.0.2.10", 12345),
+        })
+
+        task = asyncio.create_task(
+            api.extract_customer_requirements(
+                request=api.ExtractRequest(
+                    customer_text=TEXT
+                ),
+                http_request=request,
+            )
+        )
+
+        await asyncio.wait_for(
+            started.wait(),
+            timeout=3,
+        )
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(scenario())
+
+    assert events == [(789, False)]
+
+
+def test_public_ai_deadline_precedes_lease_expiry():
+    """Normal AI execution must finish before lease expiry."""
+
+    from backend.ai.quota_service import QuotaLimits
+
+    limits = QuotaLimits()
+
+    assert (
+        0 < api.PUBLIC_AI_TIMEOUT_SECONDS
+        < limits.lease_seconds
+    )

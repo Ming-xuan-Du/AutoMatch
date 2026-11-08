@@ -1,4 +1,4 @@
-
+import asyncio
 """Customer requirement extraction API.
 
 Public AI calls require an explicit enable flag,
@@ -37,6 +37,10 @@ router = APIRouter(
     prefix="/api/requirements",
     tags=["requirements"],
 )
+
+# Additional deadline for public AI extraction.
+# Must remain well below the quota lease duration.
+PUBLIC_AI_TIMEOUT_SECONDS = 30.0
 
 
 def get_visitor_address(request: Request) -> str:
@@ -159,12 +163,29 @@ async def extract_customer_requirements(
             ) from exc
 
     try:
-        result = await extract_requirements(
-            request.customer_text
-        )
+        if public_demo:
+            async with asyncio.timeout(
+                PUBLIC_AI_TIMEOUT_SECONDS
+            ):
+                result = await extract_requirements(
+                    request.customer_text
+                )
+        else:
+            result = await extract_requirements(
+                request.customer_text
+            )
 
         succeeded = True
         return result
+
+    except TimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                "AI extraction timed out. "
+                "Use manual search."
+            ),
+        ) from exc
 
     except PersonalInformationDetected as exc:
         raise HTTPException(
