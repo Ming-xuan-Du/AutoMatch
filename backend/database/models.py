@@ -10,6 +10,7 @@ from sqlalchemy import (
     JSON,
     String,
     Text,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -342,4 +343,63 @@ class AnomalyReviewEvent(Base):
 
     anomaly: Mapped["AnomalyFlag"] = relationship(
         back_populates="review_events",
+    )
+
+
+class AIExtractionAttempt(Base):
+    """A granted AI extraction quota reservation.
+
+    Never store raw IP addresses, customer statements,
+    API keys, or model responses in this table.
+    """
+
+    __tablename__ = "ai_extraction_attempts"
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('reserved', 'completed', 'failed')",
+            name="ck_ai_extraction_attempts_status",
+        ),
+        Index(
+            "ix_ai_extraction_attempts_visitor_created",
+            "visitor_hash",
+            "created_at",
+        ),
+        Index(
+            "ix_ai_extraction_attempts_created_at",
+            "created_at",
+        ),
+        Index(
+            "ix_ai_extraction_attempts_status_lease",
+            "status",
+            "lease_expires_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    visitor_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    lease_expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="reserved",
+        server_default="reserved",
     )
