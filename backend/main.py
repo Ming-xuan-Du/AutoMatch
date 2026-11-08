@@ -11,30 +11,6 @@ from backend.api.requirements import router as requirements_router
 from backend.api.anomalies import router as anomalies_router
 
 
-app = FastAPI(
-    title="AutoMatch API",
-    description=(
-        "Vehicle inventory and deterministic "
-        "partial-match search API."
-    ),
-    version="0.1.0",
-)
-
-
-app.include_router(vehicles_router)
-app.include_router(inventory_router)
-app.include_router(requirements_router)
-app.include_router(anomalies_router)
-
-
-@app.get("/health")
-def health_check():
-    return {
-        "status": "ok",
-        "service": "AutoMatch API",
-    }
-
-
 def mount_frontend(
     application: FastAPI,
     dist_dir: Path,
@@ -64,14 +40,65 @@ def mount_frontend(
     )
 
 
-# Opt-in: local API development and backend CI remain unchanged.
-if os.getenv(
-    "AUTOMATCH_SERVE_FRONTEND", "0"
-).strip() == "1":
-    frontend_dist = (
-        Path(__file__).resolve().parents[1]
-        / "frontend"
-        / "dist"
+def create_app(
+    *,
+    public_demo: bool = False,
+    serve_frontend: bool = False,
+) -> FastAPI:
+    """Create the AutoMatch application.
+
+    Public demos intentionally omit the local-only
+    anomaly review API.
+
+    Existing local development behavior is preserved.
+    """
+
+    application = FastAPI(
+        title="AutoMatch API",
+        description=(
+            "Vehicle inventory and deterministic "
+            "partial-match search API."
+        ),
+        version="0.1.0",
     )
 
-    mount_frontend(app, frontend_dist)
+    application.include_router(vehicles_router)
+    application.include_router(inventory_router)
+    application.include_router(requirements_router)
+
+    # This API uses a development-only shared key.
+    # Never expose it in the public portfolio demo.
+    if not public_demo:
+        application.include_router(anomalies_router)
+
+    @application.get("/health")
+    def health_check():
+        return {
+            "status": "ok",
+            "service": "AutoMatch API",
+        }
+
+    if serve_frontend:
+        frontend_dist = (
+            Path(__file__).resolve().parents[1]
+            / "frontend"
+            / "dist"
+        )
+
+        mount_frontend(application, frontend_dist)
+
+    return application
+
+
+app = create_app(
+    public_demo=(
+        os.getenv(
+            "AUTOMATCH_PUBLIC_DEMO", "0"
+        ).strip() == "1"
+    ),
+    serve_frontend=(
+        os.getenv(
+            "AUTOMATCH_SERVE_FRONTEND", "0"
+        ).strip() == "1"
+    ),
+)
