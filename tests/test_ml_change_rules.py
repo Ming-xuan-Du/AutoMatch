@@ -196,3 +196,70 @@ def test_invalid_threshold_rejected():
             change,
             large_cash_change_ratio=0,
         )
+
+def test_reappeared_large_price_drop_flagged():
+    change = make_change(
+        change_type="reappeared",
+        changes={
+            "price_cash": {
+                "old": 20000,
+                "new": 9000,
+            },
+            "missing_streak": {
+                "old": 2,
+                "new": 0,
+            },
+            "is_active": {
+                "old": False,
+                "new": True,
+            },
+        },
+    )
+
+    assert rule_ids(change) == {
+        "large_cash_price_change",
+    }
+
+def test_reappeared_mileage_decrease_flagged():
+    change = make_change(
+        change_type="reappeared",
+        changes={
+            "mileage_km": {
+                "old": 80000,
+                "new": 65000,
+            },
+            "missing_streak": {
+                "old": 1,
+                "new": 0,
+            },
+        },
+    )
+
+    assert rule_ids(change) == {
+        "mileage_decrease",
+    }
+
+def test_reappeared_without_anomaly_not_flagged():
+    change = make_change(
+        change_type="reappeared",
+        changes={
+            "price_cash": {
+                "old": 20000,
+                "new": 19500,
+            },
+            "mileage_km": {
+                "old": 80000,
+                "new": 82000,
+            },
+            "missing_streak": {
+                "old": 2,
+                "new": 0,
+            },
+            "is_active": {
+                "old": False,
+                "new": True,
+            },
+        },
+    )
+
+    assert rule_ids(change) == set()

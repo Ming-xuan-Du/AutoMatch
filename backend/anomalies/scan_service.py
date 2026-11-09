@@ -226,15 +226,34 @@ def run_anomaly_scan(
         else:
             seen_again += 1
 
+
     # 1. Current vehicle validation rules.
-    for vehicle in present:
+    # Confirmed-present vehicles receive all rules.
+    # Other vehicles are checked only for negative
+    # missing streaks.
+    for vehicle in vehicles:
+        is_present = vehicle.id in present_ids
+
+        if not is_present and (
+            vehicle.missing_streak is None
+            or vehicle.missing_streak >= 0
+        ):
+            continue
+
         findings = check_vehicle(
             vehicle,
             reference_year=reference_year,
         )
 
         for finding in findings:
+            if (
+                not is_present
+                and finding.rule_id != "negative_missing_streak"
+            ):
+                continue
+
             rule_count += 1
+
 
             evidence = {
                 "field": finding.field,

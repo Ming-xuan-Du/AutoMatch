@@ -19,6 +19,11 @@ from backend.anomalies.scan_service import (
 )
 from backend.database.connection import SessionLocal
 
+from backend.database.target_guard import (
+    UnsafeDatabaseTarget,
+    require_local_write_target,
+)
+
 
 # Dedicated transaction lock for AutoMatch anomaly scans.
 ADVISORY_LOCK_KEY = 820083620260806
@@ -87,6 +92,11 @@ def main(argv=None):
         help="Run deterministic rules only.",
     )
 
+    parser.add_argument(
+        "--confirm-database",
+        help="Exact database name required for --apply.",
+    )
+
     args = parser.parse_args(argv)
 
     with SessionLocal() as session:
@@ -97,6 +107,11 @@ def main(argv=None):
             )
 
             if args.apply:
+                require_local_write_target(
+                    session.get_bind(),
+                    confirmed_database=args.confirm_database,
+                )
+
                 if is_postgresql:
                     acquired = session.execute(
                         text(
@@ -128,6 +143,11 @@ def main(argv=None):
                 session.commit()
             else:
                 session.rollback()
+
+        except UnsafeDatabaseTarget as exc:
+            session.rollback()
+            print(f"REFUSED: {exc}")
+            return 2
 
         except Exception:
             session.rollback()

@@ -11,4 +11,5 @@ def test_database_connection():
 
         database_name = result.scalar()
 
-        assert database_name == "automatch"
+        assert database_name == "automatch_test"
+        assert database_name == engine.url.database

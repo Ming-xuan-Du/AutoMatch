@@ -12,6 +12,11 @@ from backend.inventory.snapshot_loader import (
 )
 from backend.inventory.sync_service import sync_inventory
 
+from backend.database.target_guard import (
+    UnsafeDatabaseTarget,
+    require_local_write_target,
+)
+
 
 def get_engine():
     engine = getattr(connection, "engine", None)
@@ -71,6 +76,11 @@ def main():
         "--apply",
         action="store_true",
         help="Apply a certified snapshot to PostgreSQL",
+    )
+
+    parser.add_argument(
+        "--confirm-database",
+        help="Exact database name required for --apply.",
     )
 
     args = parser.parse_args()
@@ -148,6 +158,15 @@ def main():
         raise SystemExit(
             "REFUSED: --apply requires PostgreSQL"
         )
+
+    # Confirm database identity before applying changes.
+    try:
+        require_local_write_target(
+            engine,
+            confirmed_database=args.confirm_database,
+        )
+    except UnsafeDatabaseTarget as exc:
+        raise SystemExit(f"REFUSED: {exc}") from exc
 
     print("\nApplying snapshot to PostgreSQL...")
 

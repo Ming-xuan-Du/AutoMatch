@@ -13,6 +13,13 @@ from backend.database.connection import Base
 from backend.database.models import AnomalyFlag, Vehicle
 from ml.model_inference import ModelFinding
 
+APPLY_ARGS = [
+    "--apply",
+    "--no-model",
+    "--confirm-database",
+    "automatch_test",
+]
+
 
 @pytest.fixture
 def db_factory(monkeypatch):
@@ -34,6 +41,18 @@ def db_factory(monkeypatch):
         cli,
         "SessionLocal",
         factory,
+    )
+
+    # Simulate an authorized target for isolated CLI tests.
+    # The production guard is tested separately.
+    def allow_isolated_test(bind, *, confirmed_database):
+        assert bind is engine
+        assert confirmed_database == "automatch_test"
+
+    monkeypatch.setattr(
+        cli,
+        "require_local_write_target",
+        allow_isolated_test,
     )
 
     with factory() as session:
@@ -79,9 +98,7 @@ def test_preview_creates_no_records(
 def test_apply_is_idempotent_and_preserves_review(
     db_factory,
 ):
-    assert cli.main(
-        ["--apply", "--no-model"]
-    ) == 0
+    assert cli.main(APPLY_ARGS) == 0
 
     with db_factory() as session:
         flag = session.scalar(select(AnomalyFlag))
@@ -91,9 +108,7 @@ def test_apply_is_idempotent_and_preserves_review(
         flag.reviewer_note = "Reviewed by staff"
         session.commit()
 
-    assert cli.main(
-        ["--apply", "--no-model"]
-    ) == 0
+    assert cli.main(APPLY_ARGS) == 0
 
     flags = get_flags(db_factory)
 
@@ -105,7 +120,7 @@ def test_apply_is_idempotent_and_preserves_review(
 def test_preview_does_not_update_existing_finding(
     db_factory,
 ):
-    cli.main(["--apply", "--no-model"])
+    cli.main(APPLY_ARGS)
 
     with db_factory() as session:
         flag = session.scalar(select(AnomalyFlag))
@@ -138,14 +153,14 @@ def test_preview_does_not_update_existing_finding(
 def test_changed_evidence_creates_new_flag(
     db_factory,
 ):
-    cli.main(["--apply", "--no-model"])
+    cli.main(APPLY_ARGS)
 
     with db_factory() as session:
         vehicle = session.scalar(select(Vehicle))
         vehicle.price_cash = -2
         session.commit()
 
-    cli.main(["--apply", "--no-model"])
+    cli.main(APPLY_ARGS)
 
     flags = get_flags(db_factory)
 
@@ -212,3 +227,25 @@ def test_duplicate_finding_with_autoflush_disabled(
     assert result.created == 1
     assert result.seen_again == 1
     assert count == 1
+
+def test_apply_rejects_unsafe_database(
+    db_factory,
+    monkeypatch,
+    capsys,
+):
+    from backend.database.target_guard import (
+        require_local_write_target,
+    )
+
+    # Restore the real guard for this negative test.
+    monkeypatch.setattr(
+        cli,
+        "require_local_write_target",
+        require_local_write_target,
+    )
+
+    result = cli.main(APPLY_ARGS)
+
+    assert result == 2
+    assert "REFUSED:" in capsys.readouterr().out
+    assert len(get_flags(db_factory)) == 0

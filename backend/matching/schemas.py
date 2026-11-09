@@ -1,8 +1,12 @@
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
-
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 CriterionName = Literal[
     "budget",
@@ -33,6 +37,27 @@ class MatchRequest(BaseModel):
 
     body_style: str | None = Field(default=None, min_length=1)
     drivetrain: str | None = Field(default=None, min_length=1)
+
+    @field_validator(
+        "make",
+        "model",
+        "body_style",
+        "drivetrain",
+        mode="before",
+    )
+    @classmethod
+    def clean_text_filters(cls, value):
+        if value is None or not isinstance(value, str):
+            return value
+
+        cleaned = value.strip()
+
+        if not cleaned:
+            raise ValueError(
+                "Text requirements must not be blank."
+            )
+
+        return cleaned
 
     @model_validator(mode="after")
     def require_at_least_one_filter(self):

@@ -1,19 +1,43 @@
+
 import re
 
 
+NUMBER_PATTERN = re.compile(
+    r"\$?\s*"
+    r"(?P<number>\d{1,3}(?:[ ,]\d{3})+|\d+)"
+    r"\s*(?:km|kms|kilometres?|kilometers?|cad)?",
+    flags=re.IGNORECASE,
+)
+
+
 def normalize_number(text):
-    """Convert formatted numbers into integers."""
+    """Parse a complete, non-negative integer value.
+
+    Supports comma/space thousands separators, optional
+    dollar signs, and common mileage/currency suffixes.
+
+    Unrecognized or ambiguous formats return None.
+    """
     if text is None:
         return None
 
-    text = str(text).strip()
+    cleaned = (
+        str(text)
+        .strip()
+        .replace("\u00a0", " ")
+        .replace("\u202f", " ")
+    )
 
-    if not text:
+    if not cleaned:
         return None
 
-    match = re.search(r"\d[\d,]*", text)
+    match = NUMBER_PATTERN.fullmatch(cleaned)
 
-    if not match:
+    if match is None:
         return None
 
-    return int(match.group().replace(",", ""))
+    digits = match.group("number")
+
+    return int(
+        digits.replace(",", "").replace(" ", "")
+    )

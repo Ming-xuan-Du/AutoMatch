@@ -72,6 +72,80 @@ afterEach(() => {
 });
 
 describe("AI requirement extraction UI", () => {
+
+it("requires confirmation after customer text changes", async () => {
+  extractRequirements.mockResolvedValue(
+    extractedResponse
+  );
+
+  render(<App />);
+
+  const textarea = screen.getByLabelText(
+    "Natural-language customer requirements"
+  );
+
+  fireEvent.change(textarea, {
+    target: {
+      value: "I need a Toyota SUV with AWD.",
+    },
+  });
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Extract requirements with AI",
+    })
+  );
+
+  await waitFor(() => {
+    expect(
+      screen.getByLabelText("Make").value
+    ).toBe("Toyota");
+  });
+
+  fireEvent.change(textarea, {
+    target: {
+      value: "I now need a Honda sedan.",
+    },
+  });
+
+  expect(
+    screen.getByRole("status").textContent
+  ).toContain("description has changed");
+
+  // Previous AI filters are preserved.
+  expect(
+    screen.getByLabelText("Make").value
+  ).toBe("Toyota");
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Find matching vehicles",
+    })
+  );
+
+  expect(fetchMatches).not.toHaveBeenCalled();
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Use current form filters",
+    })
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Find matching vehicles",
+    })
+  );
+
+  await waitFor(() => {
+    expect(fetchMatches).toHaveBeenCalledWith(
+      expect.objectContaining({
+        make: "Toyota",
+      })
+    );
+  });
+});
+
   beforeEach(() => {
     vi.clearAllMocks();
     fetchMatches.mockResolvedValue([]);

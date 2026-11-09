@@ -19,6 +19,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend.database.connection import SessionLocal
 from backend.database.models import AIExtractionAttempt
 
+from backend.database.target_guard import (
+    UnsafeDatabaseTarget,
+    require_local_write_target,
+)
+
 
 RETENTION_DAYS = 45
 
@@ -117,7 +122,22 @@ def main(argv=None) -> int:
         ),
     )
 
+    parser.add_argument(
+        "--confirm-database",
+        help="Exact database name required for --apply.",
+    )
+
     args = parser.parse_args(argv)
+
+    if args.apply:
+        try:
+            require_local_write_target(
+                SessionLocal.kw.get("bind"),
+                confirmed_database=args.confirm_database,
+            )
+        except UnsafeDatabaseTarget as exc:
+            print(f"REFUSED: {exc}")
+            return 2
 
     try:
         result = cleanup_ai_usage(

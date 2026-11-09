@@ -1,6 +1,9 @@
-
 import { describe, expect, it } from "vitest";
-import { normalizeMatchResponse } from "./match";
+import {
+  buildMatchPayload,
+  normalizeMatchResponse,
+} from "./match";
+
 
 describe("Real FastAPI response normalization", () => {
   it("reads flat vehicle fields and checks", () => {
@@ -57,5 +60,44 @@ describe("Real FastAPI response normalization", () => {
     expect(results[0].conditions[1].status).toBe("not_met");
     expect(results[0].conditions[2].difference).toBe(1);
     expect(results[0].conditions[2].requested).toBe(2020);
+  });
+});
+
+describe("Matching payload validation", () => {
+  it.each([
+    ["max_budget", "0"],
+    ["max_budget", "-100"],
+    ["min_year", "1899"],
+    ["min_year", "2101"],
+    ["min_year", "2020.5"],
+    ["max_mileage_km", "-1"],
+    ["max_mileage_km", "100.5"],
+  ])("rejects invalid %s=%s", (field, value) => {
+    expect(() =>
+      buildMatchPayload({
+        make: "Toyota",
+        [field]: value,
+      })
+    ).toThrow();
+  });
+
+  it("accepts valid numeric boundaries", () => {
+    const payload = buildMatchPayload({
+      max_budget: "25000.50",
+      min_year: "2020",
+      max_mileage_km: "0",
+    });
+
+    expect(payload.max_budget).toBe(25000.5);
+    expect(payload.min_year).toBe(2020);
+    expect(payload.max_mileage_km).toBe(0);
+  });
+
+  it("trims text requirements", () => {
+    const payload = buildMatchPayload({
+      make: "  Toyota  ",
+    });
+
+    expect(payload.make).toBe("Toyota");
   });
 });

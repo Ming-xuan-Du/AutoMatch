@@ -66,3 +66,36 @@ def test_empty_inventory():
 def test_missing_vehicle_card():
     with pytest.raises(ValueError, match="Vehicle card not found"):
         parse_vehicle("<div>No vehicle here</div>")
+
+
+def test_parser_handles_formatted_and_invalid_numbers():
+    html = """
+    <div id="vehicle-123">
+        <a class="inventory_a__title_2"
+           href="/vehicles/123">
+            2020 Toyota Corolla
+        </a>
+
+        <p class="inventory_p__price">
+            <span>Cash Price</span>
+            <span>$25 900</span>
+        </p>
+
+        <p class="inventory_p__price">
+            <span>Finance Price</span>
+            <span>-$1,000</span>
+        </p>
+
+        <div class="inventory_div__cell">
+            <p>Odometer</p>
+            <p>85 000 km</p>
+        </div>
+    </div>
+    """
+
+    vehicle = parse_vehicle(html)
+
+    assert vehicle["source_listing_id"] == "123"
+    assert vehicle["price_cash"] == 25900
+    assert vehicle["price_finance"] is None
+    assert vehicle["mileage_km"] == 85000

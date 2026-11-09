@@ -15,6 +15,17 @@ from backend.scraper.normalizer import normalize_number
         (None, None),
         ("N/A", None),
         ("Unknown", None),
+        ("$25 900", 25900),
+        ("85 000 km", 85000),
+        ("$25\u00a0900", 25900),
+        ("85\u202f000 km", 85000),
+        ("25,900 CAD", 25900),
+        ("Contact for price", None),
+        ("-$1,000", None),
+        ("$-1,000", None),
+        ("$25,900.50", None),
+        ("25 90", None),
+        ("25,900 or 27,000", None),
     ],
 )
 def test_normalize_number(raw_value, expected):

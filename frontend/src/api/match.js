@@ -34,14 +34,36 @@ export function buildMatchPayload(form) {
     if (NUMERIC_FIELDS.has(field)) {
       const number = Number(raw);
 
-      if (
-        !Number.isFinite(number) ||
-        !Number.isInteger(number) ||
-        number < 0
-      ) {
-        throw new Error(
-          `${field} must be a valid non-negative integer.`
-        );
+      if (!Number.isFinite(number)) {
+        throw new Error(`${field} must be a valid number.`);
+      }
+
+      if (field === "max_budget") {
+        if (number <= 0) {
+          throw new Error(
+            "Maximum cash budget must be greater than 0."
+          );
+        }
+      }
+
+      if (field === "min_year") {
+        if (
+          !Number.isInteger(number) ||
+          number < 1900 ||
+          number > 2100
+        ) {
+          throw new Error(
+            "Minimum year must be between 1900 and 2100."
+          );
+        }
+      }
+
+      if (field === "max_mileage_km") {
+        if (!Number.isInteger(number) || number < 0) {
+          throw new Error(
+            "Maximum mileage must be a non-negative integer."
+          );
+        }
       }
 
       payload[field] = number;

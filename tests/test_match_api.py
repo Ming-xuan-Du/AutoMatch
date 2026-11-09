@@ -238,3 +238,39 @@ def test_health_endpoint(client):
 
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+
+def test_blank_make_with_budget_returns_422(client):
+    response = client.post(
+        "/api/vehicles/match",
+        json={
+            "make": "   ",
+            "max_budget": 30000,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_make_with_spaces_is_normalized(client):
+    response = client.post(
+        "/api/vehicles/match",
+        json={
+            "make": "  Toyota  ",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["count"] == 5
+
+    for candidate in data["candidates"]:
+        make_check = next(
+            check
+            for check in candidate["checks"]
+            if check["field"] == "make"
+        )
+
+        assert make_check["requested"] == "Toyota"
+        assert make_check["status"] == "met"

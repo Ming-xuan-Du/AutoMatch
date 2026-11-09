@@ -360,3 +360,139 @@ def test_invalid_reference_year_rejected(db):
         select(func.count()).select_from(AnomalyFlag)
     )
     assert count == 0
+
+
+def test_reappeared_change_persists_and_is_idempotent(db):
+    car = add_car(db, "reappeared-001", 9000)
+    car.mileage_km = 65000
+
+    snapshot = InventorySnapshot(total_vehicles=1)
+    db.add(snapshot)
+    db.flush()
+
+    audit = InventoryChange(
+        snapshot_id=snapshot.id,
+        source_listing_id=car.source_listing_id,
+        change_type="reappeared",
+        changes={
+            "price_cash": {
+                "old": 20000,
+                "new": 9000,
+            },
+            "mileage_km": {
+                "old": 80000,
+                "new": 65000,
+            },
+            "missing_streak": {
+                "old": 2,
+                "new": 0,
+            },
+            "is_active": {
+                "old": False,
+                "new": True,
+            },
+        },
+    )
+
+    db.add(audit)
+    db.commit()
+
+    # First scan: both historical anomalies must persist.
+    first = run_rules(db)
+    db.commit()
+
+    flags = db.scalars(
+        select(AnomalyFlag).order_by(AnomalyFlag.id)
+    ).all()
+
+    assert first.created == 2
+    assert first.rule_findings == 2
+    assert len(flags) == 2
+
+    assert {flag.issue_type for flag in flags} == {
+        "large_cash_price_change",
+        "mileage_decrease",
+    }
+
+    assert all(
+        flag.inventory_change_id == audit.id
+        for flag in flags
+    )
+
+    assert all(
+        flag.vehicle_id == car.id
+        for flag in flags
+    )
+
+    # Scanning must not modify inventory.
+    db.refresh(car)
+    assert car.price_cash == 9000
+    assert car.mileage_km == 65000
+    assert car.is_active is True
+    assert car.missing_streak == 0
+
+    # Second scan: the same findings must not duplicate.
+    second = run_rules(db)
+    db.commit()
+
+    assert second.created == 0
+    assert second.seen_again == 2
+
+    count = db.scalar(
+        select(func.count()).select_from(AnomalyFlag)
+    )
+
+    assert count == 2
+
+
+@pytest.mark.parametrize("is_active", [True, False])
+def test_negative_missing_streak_is_detected(
+    db,
+    is_active,
+):
+    # Invalid price must not be flagged when
+    # the vehicle is not confirmed-present.
+    car = add_car(db, "invalid-streak-001", -1)
+
+    car.is_active = is_active
+    car.missing_streak = -1
+    db.commit()
+
+    first = run_rules(db)
+    db.commit()
+
+    flags = db.scalars(
+        select(AnomalyFlag)
+    ).all()
+
+    assert first.vehicles_checked == 0
+    assert first.rule_findings == 1
+    assert first.created == 1
+
+    assert len(flags) == 1
+    assert flags[0].issue_type == "negative_missing_streak"
+    assert flags[0].detector == "rule"
+    assert flags[0].vehicle_id == car.id
+
+    assert flags[0].evidence["field"] == "missing_streak"
+    assert flags[0].evidence["observed_value"] == -1
+
+    # A repeated scan must not duplicate the finding.
+    second = run_rules(db)
+    db.commit()
+
+    assert second.created == 0
+    assert second.seen_again == 1
+
+    count = db.scalar(
+        select(func.count()).select_from(AnomalyFlag)
+    )
+
+    assert count == 1
+
+    # The scan must not modify inventory.
+    db.refresh(car)
+
+    assert car.missing_streak == -1
+    assert car.price_cash == -1
+    assert car.is_active is is_active

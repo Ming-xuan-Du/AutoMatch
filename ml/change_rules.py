@@ -74,7 +74,12 @@ def check_inventory_change(
             "large_cash_change_ratio must be finite and positive"
         )
 
-    if change.change_type != "updated":
+    # Reappeared listings can also contain real
+    # price and mileage transitions.
+    if change.change_type not in {
+        "updated",
+        "reappeared",
+    }:
         return []
 
     payload = change.changes

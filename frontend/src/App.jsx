@@ -24,7 +24,8 @@ const fields = [
     label: "Maximum cash budget (CAD)",
     placeholder: "e.g. 30000",
     type: "number",
-    min: 0,
+    min: 0.01,
+    step: 0.01,
   },
   {
     name: "make",
@@ -76,6 +77,8 @@ export default function App() {
   const [extracting, setExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState("");
   const [extraction, setExtraction] = useState(null);
+  const [extractionStale, setExtractionStale] =
+    useState(false);
   const [editedFields, setEditedFields] = useState({});
   const [showAnomalyReview, setShowAnomalyReview] =
     useState(false);
@@ -137,6 +140,7 @@ export default function App() {
       // Non-explicit values are never activated.
       setForm(updatedForm);
       setExtraction(result);
+      setExtractionStale(false);
       setEditedFields({});
 
       // Existing search results are now outdated.
@@ -159,6 +163,15 @@ export default function App() {
 
     setError("");
     setMatches(null);
+
+    if (extractionStale) {
+      setError(
+        "The customer description has changed since AI " +
+        "extraction. Extract again or confirm the " +
+        "current form filters before searching."
+      );
+      return;
+    }
 
     try {
       const payload = buildMatchPayload(form);
@@ -279,10 +292,14 @@ export default function App() {
                 id="customer_text"
                 value={customerText}
                 onChange={(event) => {
+                  setExtractionStale(
+                    (wasStale) => wasStale || extraction !== null
+                  );
                   setCustomerText(event.target.value);
                   setExtraction(null);
                   setExtractionError("");
                   setMatches(null);
+                  setError("");
                 }}
                 placeholder={
                   "Example: I need a Toyota SUV under " +
@@ -301,6 +318,26 @@ export default function App() {
               replaces the seven filters below but never
               searches automatically.
             </p>
+
+            {extractionStale && (
+              <div className="stale-extraction-notice" role="status">
+                <p>
+                  The customer description has changed.
+                  The current search filters may still reflect
+                  the previous AI extraction.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExtractionStale(false);
+                    setError("");
+                  }}
+                >
+                  Use current form filters
+                </button>
+              </div>
+            )}
 
             <div className="form-actions">
               <button
@@ -390,9 +427,7 @@ export default function App() {
                     placeholder={field.placeholder}
                     min={field.min}
                     max={field.max}
-                    step={
-                      field.type === "number" ? 1 : undefined
-                    }
+                    step={field.type === "number" ? (field.step ?? 1) : undefined}
                     disabled={loading || extracting}
                   />
                   {extraction && (

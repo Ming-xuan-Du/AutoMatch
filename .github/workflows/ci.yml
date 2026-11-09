@@ -20,19 +20,20 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_DB: automatch
+          POSTGRES_DB: automatch_test
           POSTGRES_USER: automatch_ci
           POSTGRES_PASSWORD: ci_only_password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U automatch_ci -d automatch"
+          --health-cmd "pg_isready -U automatch_ci -d automatch_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql+psycopg://automatch_ci:ci_only_password@127.0.0.1:5432/automatch
+      DATABASE_URL: postgresql+psycopg://automatch_ci:ci_only_password@127.0.0.1:5432/automatch_test
+      AUTOMATCH_RUN_DB_TESTS: "1"
 
     steps:
       - name: Checkout repository

@@ -280,7 +280,28 @@ def test_cli_requires_explicit_apply(
     assert "Deleted records: 0" in output
     assert record_count(usage_sessions) == 1
 
-    assert cleanup_usage.main(["--apply"]) == 0
+     # Apply without database confirmation must be refused.
+    assert cleanup_usage.main(["--apply"]) == 2
+    assert record_count(usage_sessions) == 1
+
+    # The integration fixture uses an isolated temporary table
+    # on a SQLAlchemy Connection, rather than the normal Engine.
+    # Mock only the CLI authorization boundary.
+    def allow_test_connection(bind, *, confirmed_database):
+        assert bind is usage_sessions.kw["bind"]
+        assert confirmed_database == "automatch_test"
+
+    monkeypatch.setattr(
+        cleanup_usage,
+        "require_local_write_target",
+        allow_test_connection,
+    )
+
+    assert cleanup_usage.main([
+        "--apply",
+        "--confirm-database",
+        "automatch_test",
+    ]) == 0
 
     output = capsys.readouterr().out
 

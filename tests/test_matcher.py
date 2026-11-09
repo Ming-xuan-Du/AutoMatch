@@ -264,3 +264,41 @@ def test_same_make_different_model_can_qualify():
     assert len(matches) == 1
     assert statuses(matches[0])["make"] == "met"
     assert statuses(matches[0])["model"] == "not_met"
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "make",
+        "model",
+        "body_style",
+        "drivetrain",
+    ],
+)
+def test_blank_text_rejected_with_valid_budget(field):
+    with pytest.raises(ValidationError):
+        MatchRequest(
+            max_budget=30000,
+            **{field: "   "},
+        )
+
+
+def test_text_requirements_are_trimmed():
+    request = MatchRequest(
+        make="  Toyota  ",
+        model="  RAV4  ",
+        body_style="  SUV  ",
+        drivetrain="  AWD  ",
+    )
+
+    assert request.make == "Toyota"
+    assert request.model == "RAV4"
+    assert request.body_style == "SUV"
+    assert request.drivetrain == "AWD"
+
+    matches = find_candidates(
+        [vehicle(1)],
+        request,
+    )
+
+    assert len(matches) == 1
+    assert statuses(matches[0])["make"] == "met"

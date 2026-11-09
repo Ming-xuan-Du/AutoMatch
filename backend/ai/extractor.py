@@ -231,6 +231,58 @@ def valid_requirement_value(
         and len(value.strip()) <= 80
     )
 
+def evidence_supports_field_value(
+    field: str,
+    value: object,
+    evidence: str,
+) -> bool:
+    """Conservatively verify textual values against evidence."""
+
+    if field not in {
+        "make", "model", "body_style", "drivetrain"
+    }:
+        return True
+
+    if not isinstance(value, str):
+        return False
+
+    def compact(text: str) -> str:
+        return "".join(
+            char for char in text.casefold()
+            if char.isalnum()
+        )
+
+    expected = compact(value)
+    observed = compact(evidence)
+
+    if not expected:
+        return False
+
+    aliases = {
+        "drivetrain": (
+            ("awd", "allwheeldrive", "全轮驱动"),
+            ("fwd", "frontwheeldrive", "前驱"),
+            ("rwd", "rearwheeldrive", "后驱"),
+            ("4wd", "4x4", "fourwheeldrive", "四驱"),
+        ),
+        "body_style": (
+            ("suv", "sportutilityvehicle"),
+            ("sedan", "saloon"),
+            ("pickup", "pickuptruck"),
+        ),
+        "make": (
+            ("vw", "volkswagen"),
+            ("chevy", "chevrolet"),
+            ("mercedesbenz", "mercedes"),
+        ),
+    }
+
+    for group in aliases.get(field, ()):
+        if expected in group:
+            return any(alias in observed for alias in group)
+
+    return expected in observed
+
 
 def build_extraction_response(
     draft: LLMExtraction,
@@ -279,6 +331,18 @@ def build_extraction_response(
                 status = "ambiguous"
                 note = (
                     "The extracted value was invalid. "
+                    "Confirm it manually."
+                )
+
+            elif not evidence_supports_field_value(
+                field,
+                value,
+                evidence,
+            ):
+                status = "ambiguous"
+                note = (
+                    "The extracted value does not match "
+                    "its supporting evidence. "
                     "Confirm it manually."
                 )
 
